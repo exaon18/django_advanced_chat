@@ -57,6 +57,8 @@
             margin-bottom: 15px;
             overflow-y: auto;
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
         }
 
         .chat::-webkit-scrollbar {
@@ -117,8 +119,36 @@
 
         .chat-message {
             animation: fadeIn 0.3s ease-out;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 18px;
             line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .chat-message.sent {
+            align-self: flex-end;
+            background-color: #23a6d5;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-message.received {
+            align-self: flex-start;
+            background-color: #e0e0e0;
+            color: #333;
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-message .username {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .chat-message .message-content {
+            font-size: 1em;
         }
     </style>
 </head>
@@ -126,42 +156,57 @@
     <div class="chat-container">
         <p>hey there <strong class="user">{{username}}</strong></p>
         <div class="chat" id="chat-log"></div>
-        <input class="input" id="chat-message-input" type="text" size="100"><br>
+        <input class="input" id="chat-message-input" type="text" placeholder="Type your message..." size="100"><br>
         <button class="send">send</button>
         <p class="room">{{room}}</p>
     </div>
     <script>
-        const room=document.querySelector(".room").innerHTML;
-        const username=document.querySelector(".user").innerHTML;
-        const socket= new WebSocket(
-            'wss://'+
-            window.location.host+
-            '/wss/chat/'+
-            room+
-            '/'+username+'/'
+        const room = document.querySelector(".room").innerHTML;
+        const username = document.querySelector(".user").innerHTML;
+        const socket = new WebSocket(
+            'wss://' +
+            window.location.host +
+            '/wss/chat/' +
+            room +'/'+
+            username+
+            '/'
         );
-        
-        socket.onmessage=function(e){
-            const data=JSON.parse(e.data);
-            if(data.type==="on_connected"){
-                document.querySelector('.chat').innerHTML+=(username+' '+data.msg);
-            }
-            else{
+        socket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
             const chatLog = document.querySelector(".chat");
             const messageElement = document.createElement('div');
             messageElement.classList.add('chat-message');
-            messageElement.textContent = data.username + " : " + data.msg;
+            
+            if (data.username === username) {
+                messageElement.classList.add('sent');
+            } else {
+                messageElement.classList.add('received');
+            }
+            
+            messageElement.innerHTML = `
+                <div class="username">${data.username}</div>
+                <div class="message-content">${data.msg}</div>
+            `;
+            
             chatLog.appendChild(messageElement);
-            chatLog.scrollTop = chatLog.scrollHeight;};
+            chatLog.scrollTop = chatLog.scrollHeight;
         };
-        document.querySelector(".send").onclick= function(e){
-            const data=document.querySelector(".input").value;
-            socket.send(JSON.stringify({
-                "msg":data,
-                 "username":username
-            }));
-            document.querySelector(".input").value = '';
-        }
+        document.querySelector(".send").onclick = function(e) {
+            const messageInput = document.querySelector(".input");
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.send(JSON.stringify({
+                    "msg": message,
+                    "username": username
+                }));
+                messageInput.value = '';
+            }
+        };
+        document.querySelector(".input").addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.querySelector(".send").click();
+            }
+        });
     </script>
 </body>
 </html>
